@@ -3069,7 +3069,7 @@ static int mov_probe(AVProbeData *p)
     offset = 0;
     for (;;) {
         /* ignore invalid offset */
-        if ((offset + 8) > (unsigned int)p->buf_size)
+        if ((offset + 8) > p->buf_size)
             break;
         tag = AV_RL32(p->buf + offset + 4);
         switch(tag) {
