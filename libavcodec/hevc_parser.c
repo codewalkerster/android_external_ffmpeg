@@ -173,13 +173,13 @@ static inline int parse_nal_units(AVCodecParserContext *s,
 
             sh->pps_id = get_ue_golomb(gb);
             if (sh->pps_id >= MAX_PPS_COUNT || !h->pps_list[sh->pps_id]) {
-                av_log(h->avctx, AV_LOG_ERROR, "PPS id out of range: %d\n", sh->pps_id);
+                av_log(h->avctx, AV_LOG_DEBUG, "PPS id out of range: %d\n", sh->pps_id);
                 return AVERROR_INVALIDDATA;
             }
             h->pps = (HEVCPPS*)h->pps_list[sh->pps_id]->data;
 
             if (h->pps->sps_id >= MAX_SPS_COUNT || !h->sps_list[h->pps->sps_id]) {
-                av_log(h->avctx, AV_LOG_ERROR, "SPS id out of range: %d\n", h->pps->sps_id);
+                av_log(h->avctx, AV_LOG_DEBUG, "SPS id out of range: %d\n", h->pps->sps_id);
                 return AVERROR_INVALIDDATA;
             }
             if (h->sps != (HEVCSPS*)h->sps_list[h->pps->sps_id]->data) {
