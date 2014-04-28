@@ -1201,6 +1201,18 @@ FFMPEG_LIBAVFORMAT_SRC_FILES := \
     libavformat/xwma.c \
     libavformat/yop.c \
     libavformat/yuv4mpeg.c
+    
+##### libavformat
+
+FFMPEG_LIBSWSCALE_SRC_FILES := \
+    libswscale/input.c \
+    libswscale/options.c \
+    libswscale/output.c \
+    libswscale/rgb2rgb.c \
+    libswscale/swscale.c \
+    libswscale/swscale_unscaled.c \
+    libswscale/utils.c \
+    libswscale/yuv2rgb.c
 
 include $(CLEAR_VARS)
 
@@ -1220,7 +1232,8 @@ LOCAL_SRC_FILES := \
     $(FFMPEG_LIBAVUTIL_SRC_FILES) \
     $(FFMPEG_LIBAVCODEC_SRC_FILES) \
     ${FFMPEG_LOCAL_SRC_FILES_$(TARGET_ARCH_VARIANT)} \
-    $(FFMPEG_LIBAVFORMAT_SRC_FILES)
+    $(FFMPEG_LIBAVFORMAT_SRC_FILES) \
+    $(FFMPEG_LIBSWSCALE_SRC_FILES)
 
 LOCAL_SHARED_LIBRARIES := libutils liblog
 

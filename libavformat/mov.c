@@ -233,6 +233,29 @@ static int mov_read_mac_string(MOVContext *c, AVIOContext *pb, int len,
     return p - dst;
 }
 
+static int mov_extract_cover_pic(AVFormatContext *s, AVIOContext *pb, int type, int size, char *value)
+{
+    if(s->cover_data){
+        av_log(s, AV_LOG_INFO, "Extract cover picture in other atom!\n");
+        return 0;
+    }
+
+    s->cover_data = av_malloc(size);
+    if(!s->cover_data){
+        av_log(s, AV_LOG_INFO, "no memery, av_alloc failed!\n");
+	 return -1;
+    }
+    s->cover_data_len = size;
+    avio_read(pb, s->cover_data, size);
+
+    if (type == 13)
+        strcpy(value, "image/jpeg");  // jpeg
+    else if (type == 14)
+        strcpy(value, "image/png");   // png
+
+    return 0;
+}
+
 static int mov_read_covr(MOVContext *c, AVIOContext *pb, int type, int len)
 {
     AVPacket pkt;
@@ -295,6 +318,7 @@ static int mov_read_udta_string(MOVContext *c, AVIOContext *pb, MOVAtom atom)
     const char *key = NULL;
     uint16_t langcode = 0;
     uint32_t data_type = 0, str_size;
+    uint32_t cover_size = 0;
     int (*parse)(MOVContext*, AVIOContext*, unsigned, const char*) = NULL;
 
     if (c->itunes_metadata && atom.type == MKTAG('-','-','-','-'))
@@ -355,6 +379,7 @@ static int mov_read_udta_string(MOVContext *c, AVIOContext *pb, MOVAtom atom)
             data_type = avio_rb32(pb); // type
             avio_rb32(pb); // unknown
             str_size = data_size - 16;
+            cover_size = data_size -16;
             atom.size -= 16;
 
             if (atom.type == MKTAG('c', 'o', 'v', 'r')) {
@@ -392,6 +417,8 @@ static int mov_read_udta_string(MOVContext *c, AVIOContext *pb, MOVAtom atom)
     else {
         if (data_type == 3 || (data_type == 0 && (langcode < 0x400 || langcode == 0x7fff))) { // MAC Encoded
             mov_read_mac_string(c, pb, str_size, str, sizeof(str));
+        } else if (data_type == 13 || data_type == 14){
+            mov_extract_cover_pic(c->fc, pb, data_type, cover_size, str);
         } else {
             avio_read(pb, str, str_size);
             str[str_size] = 0;
@@ -2499,16 +2526,24 @@ static int mov_read_tkhd(MOVContext *c, AVIOContext *pb, MOVAtom atom)
     //Assign clockwise rotate values based on transform matrix so that
     //we can compensate for iPhone orientation during capture.
 
+    if (display_matrix[0][0] == 65536 && display_matrix[1][1] == 65536) {
+        av_dict_set(&st->metadata, "rotate", "0", 0);
+        st->rotation_degree = 0;
+    }
+    
     if (display_matrix[1][0] == -65536 && display_matrix[0][1] == 65536) {
          av_dict_set(&st->metadata, "rotate", "90", 0);
+         st->rotation_degree = 1;
     }
 
     if (display_matrix[0][0] == -65536 && display_matrix[1][1] == -65536) {
          av_dict_set(&st->metadata, "rotate", "180", 0);
+         st->rotation_degree = 2;
     }
 
     if (display_matrix[1][0] == 65536 && display_matrix[0][1] == -65536) {
          av_dict_set(&st->metadata, "rotate", "270", 0);
+         st->rotation_degree = 3;
     }
 
     // transform the display width/height according to the matrix

@@ -436,6 +436,61 @@ finish:
         av_dict_set(m, "date", date, 0);
 }
 
+static int parse_apic_tag(AVFormatContext *s, AVIOContext *pb, int taglen, const char *key, int flag)
+{
+    int cover_len = taglen;
+    char mime[32];
+    char dscrp[512];
+    int ret;
+	
+    if(s->cover_data){
+        av_log(s, AV_LOG_INFO, "Has parsed APIC tag!\n");
+        return 0;
+    }
+
+    if(flag) {
+        avio_r8(pb);  // Text encoding
+        cover_len --;
+        ret = avio_get_str(pb, cover_len, mime, sizeof(mime));  // MIME Type
+        cover_len -= ret;
+        avio_r8(pb);  // Picture Type
+        cover_len --;
+        ret = avio_get_str(pb, cover_len, dscrp, sizeof(dscrp));  // Description
+        cover_len -= ret;
+    } else {
+        avio_r8(pb);  // Text encoding
+        cover_len --;
+        ret = avio_get_str(pb, 3, mime, sizeof(mime));  // MIME Type
+        cover_len -= 3;
+        avio_r8(pb);  // Picture Type
+        cover_len --;
+        ret = avio_get_str(pb, cover_len, dscrp, sizeof(dscrp));  // Description
+        cover_len -= ret;
+    }
+	
+    s->cover_data = av_malloc(cover_len);
+    if(!s->cover_data){
+        av_log(s, AV_LOG_INFO, "no memery, av_alloc failed!\n");
+	 return -1;
+    }
+    if(!strcmp(mime,"image/jpeg")) {
+            av_log(NULL, AV_LOG_INFO, "cover is image/jpeg, first byte must be 0xff!\n");
+            do{
+                ret = avio_r8(pb);
+                cover_len --;           
+            }while(ret!=0xff& cover_len > 0);
+            avio_seek(pb, -1, SEEK_CUR);
+            cover_len ++;
+            av_log(NULL, AV_LOG_INFO, "[%s:%d]cover data offset=%llx ret=%x\n",  __FUNCTION__, __LINE__, avio_tell(pb));
+    }
+    s->cover_data_len = cover_len;
+    avio_read(pb, s->cover_data, cover_len);
+
+    av_dict_set(&s->metadata, "cover_pic", mime, 0);
+
+    return 0;
+}
+
 static void free_apic(void *obj)
 {
     ID3v2ExtraMetaAPIC *apic = obj;
@@ -786,6 +841,10 @@ static void id3v2_parse(AVFormatContext *s, int len, uint8_t version,
             if (tag[0] == 'T')
                 /* parse text tag */
                 read_ttag(s, pbx, tlen, &s->metadata, tag);
+            else if(tag[0] == 'A' && tag[1] == 'P' && tag[2] == 'I' && tag[3] == 'C')
+	     		parse_apic_tag(s, pbx, tlen, tag, isv34);
+            else if(tag[0] == 'P' && tag[1] == 'I' && tag[2] == 'C')
+	     		parse_apic_tag(s, pbx, tlen, tag, isv34);
             else
                 /* parse special meta tag */
                 extra_func->read(s, pbx, tlen, tag, extra_meta);

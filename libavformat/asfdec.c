@@ -318,6 +318,34 @@ finish:
     avio_seek(s->pb, off + len, SEEK_SET);
 }
 
+static int asf_extract_cover_pic(AVFormatContext *s, int size)
+{
+    AVIOContext *pb = s->pb;
+    int pic_type, data_len, ret;
+    char mime_type[64];
+    char *data;
+
+    pic_type = avio_r8(pb);
+    data_len = avio_rl32(pb);
+    ret = avio_get_str16le(pb, size - data_len -5, mime_type, sizeof(mime_type));
+    avio_skip(pb, (size - data_len - ret - 5));
+    av_dict_set(&s->metadata, "cover_pic", mime_type, 0);
+
+    if(s->cover_data){
+        av_log(s, AV_LOG_INFO, "Extract cover picture in other object!\n");
+        return 0;
+    }
+    s->cover_data= av_malloc(data_len);
+    if(!s->cover_data){
+        av_log(s, AV_LOG_INFO, "no memery, av_alloc failed!\n");
+        return 0;
+    }
+    s->cover_data_len = data_len;
+    avio_read(pb, s->cover_data, data_len);
+
+    return 1;	
+}
+
 static int asf_read_file_properties(AVFormatContext *s, int64_t size)
 {
     ASFContext *asf = s->priv_data;
@@ -610,6 +638,8 @@ static int asf_read_ext_content_desc(AVFormatContext *s, int64_t size)
             asf->dar[0].num = get_value(s->pb, value_type, 32);
         else if (!strcmp(name, "AspectRatioY"))
             asf->dar[0].den = get_value(s->pb, value_type, 32);
+        else if(!strcmp(name, "WM/Picture"))
+            asf_extract_cover_pic(s, value_len);
         else
             get_tag(s, name, value_type, value_len, 32);
     }
@@ -668,6 +698,8 @@ static int asf_read_metadata(AVFormatContext *s, int64_t size)
             int aspect_y = get_value(s->pb, value_type, 16);
             if(stream_num < 128)
                 asf->dar[stream_num].den = aspect_y;
+        } else if(!strcmp(name, "WM/Picture")){
+            asf_extract_cover_pic(s, value_len);
         } else {
             get_tag(s, name, value_type, value_len, 16);
         }

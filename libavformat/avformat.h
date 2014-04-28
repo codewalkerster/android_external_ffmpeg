@@ -892,6 +892,8 @@ typedef struct AVStream {
      */
     int pts_wrap_behavior;
 
+    int rotation_degree;
+
 } AVStream;
 
 AVRational av_stream_get_r_frame_rate(const AVStream *s);
@@ -1343,6 +1345,9 @@ typedef struct AVFormatContext {
      * Demuxing: Set by user via av_format_set_subtitle_codec (NO direct access).
      */
     AVCodec *subtitle_codec;
+
+    int cover_data_len;
+    uint8_t *cover_data;
 } AVFormatContext;
 
 int av_format_get_probe_score(const AVFormatContext *s);
