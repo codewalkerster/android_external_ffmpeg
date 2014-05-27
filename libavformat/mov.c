@@ -423,6 +423,11 @@ static int mov_read_udta_string(MOVContext *c, AVIOContext *pb, MOVAtom atom)
             avio_read(pb, str, str_size);
             str[str_size] = 0;
         }
+        // Android MP4 writer put an additional '/' at the end, discard it.
+        // The CTS test seems the added '/' is not needed.
+        if ((atom.type == MKTAG(0xa9,'x','y','z')) && (str[str_size-1] == 0x2f)) {
+            str[str_size-1] = 0;
+        }
         av_dict_set(&c->fc->metadata, key, str, 0);
         if (*language && strcmp(language, "und")) {
             snprintf(key2, sizeof(key2), "%s-%s", key, language);
