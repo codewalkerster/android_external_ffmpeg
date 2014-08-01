@@ -852,6 +852,7 @@ FFMPEG_LIBAVFORMAT_SRC_FILES := \
     libavformat/4xm.c \
     libavformat/a64.c \
     libavformat/aacdec.c \
+    libavformat/adif.c \
     libavformat/ac3dec.c \
     libavformat/act.c \
     libavformat/adtsenc.c \
